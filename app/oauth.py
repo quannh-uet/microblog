@@ -1,3 +1,4 @@
+import requests
 from rauth import OAuth1Service, OAuth2Service
 from flask import current_app, url_for, request, redirect, session
 
@@ -37,6 +38,12 @@ class OAuthSignIn(object):
         return cls.providers[provider_name]
 
 
+def get_avatar_url(access_token, user_id):
+    url = 'https://graph.facebook.com/{0}/picture'.format(user_id)
+    response = requests.get(url, params={'type': 'square', 'access_token': access_token})
+    return response.url
+
+
 class FacebookSignIn(OAuthSignIn):
     def __init__(self):
         super(FacebookSignIn, self).__init__('facebook')
@@ -65,11 +72,17 @@ class FacebookSignIn(OAuthSignIn):
                   'redirect_uri': self.get_callback_url()}
         )
         me = oauth_session.get('me').json()
-        return (
-            'facebook$' + me['id'],
-            me.get('name'),
-            None
-        )
+
+        user_id = str(me.get('id'))
+        social_id = 'facebook$' + user_id
+        username = me.get('name')
+        avatar_url = None
+
+        access_token = oauth_session.access_token
+        if access_token is not None:
+            avatar_url = get_avatar_url(access_token, user_id)
+
+        return social_id, username, avatar_url
 
 
 class TwitterSignIn(OAuthSignIn):
@@ -104,4 +117,5 @@ class TwitterSignIn(OAuthSignIn):
         me = oauth_session.get('account/verify_credentials.json').json()
         social_id = 'twitter$' + str(me.get('id'))
         username = me.get('name')
-        return social_id, username, None  # Twitter does not provide email
+        avatar_url = me.get('profile_image_url').replace('_normal', '_bigger')
+        return social_id, username, avatar_url

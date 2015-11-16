@@ -27,6 +27,19 @@ $ source flask/bin/activate
 $ pip install -r requirements.txt
 ```
 
+###Create log file
+Windows:
+```
+mkdir tmp
+cd tmp
+type NUL > microblog.log
+```
+Linux:
+```
+mkdir tmp
+touch tmp/microblog.log
+```
+
 ###Create database
 Windows:
 ```

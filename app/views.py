@@ -1,10 +1,11 @@
-from app.forms import EditForm
+from app.forms import EditForm, PostForm
 from flask import render_template, flash, redirect, url_for, request, g
 from flask.ext.login import login_user, logout_user, current_user, login_required
 from app import app, db, lm
-from .models import User
+from .models import User, Post
 from oauth import OAuthSignIn
 from datetime import datetime
+from config import POSTS_PER_PAGE
 
 
 @app.before_request
@@ -16,35 +17,32 @@ def before_request():
         db.session.commit()
 
 
-@app.route('/')
-@app.route('/index')
+@app.route('/', methods=['GET', 'POST'])
+@app.route('/index', methods=['GET', 'POST'])
+@app.route('/index/<int:page>', methods=['GET', 'POST'])
 @login_required
-def index():
+def index(page=1):
+    form = PostForm()
+    if form.validate_on_submit():
+        post = Post(body=form.post.data, timestamp=datetime.utcnow(), author=g.user)
+        db.session.add(post)
+        db.session.commit()
+        flash('Your post is now live!')
+        return redirect(url_for('index'))
     user = g.user
-    posts = [  # fake array of posts
-        {
-            'author': {'nickname': 'John'},
-            'body': 'What the fuck post?'
-        },
-        {
-            'author': {'nickname': 'Susan'},
-            'body': 'what the hell post'
-        }
-    ]
-    return render_template('index.html', title='Home', user=user, posts=posts)
+    posts = g.user.followed_posts().paginate(page, POSTS_PER_PAGE, False).items
+    return render_template('index.html', title='Home', form=form, user=user, posts=posts)
 
 
 @app.route('/user/<userid>')
+@app.route('/user/<userid>/<int:page>')
 @login_required
-def user(userid):
+def user(userid, page=1):
     user = User.query.filter_by(id=userid).first()
-    posts = [
-        {'author': user, 'body': 'Test post #1'},
-        {'author': user, 'body': 'Test post #2'}
-    ]
     if user is None:
         flash('User %s not found.' % userid)
         return redirect(url_for('index'))
+    posts = user.posts.paginate(page, POSTS_PER_PAGE, False).items
     return render_template('user.html',
                            user=user,
                            posts=posts)
@@ -53,6 +51,48 @@ def user(userid):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     return render_template('login.html')
+
+
+@app.route('/follow/<userid>')
+@login_required
+def follow(userid):
+    userid = int(userid)
+    user = User.query.filter_by(id=userid).first()
+    if user is None:
+        flash('User %s not found.' % userid)
+        return redirect(url_for('index'))
+    if user == g.user:
+        flash('You can\'t follow yourself!')
+        return redirect(url_for('user', userid=userid))
+    u = g.user.follow(user)
+    if u is None:
+        flash('Cannot follow %s .' % userid)
+        return redirect(url_for('user', userid=userid))
+    db.session.add(u)
+    db.session.commit()
+    flash('You are now following %s !' % userid)
+    return redirect(url_for('user', userid=userid))
+
+
+@app.route('/unfollow/<userid>')
+@login_required
+def unfollow(userid):
+    userid = int(userid)
+    user = User.query.filter_by(id=userid).first()
+    if user is None:
+        flash('User %s not found.' % userid)
+        return redirect(url_for('index'))
+    if user == g.user:
+        flash('You can\'t unfollow yourself!')
+        return redirect(url_for('user', userid=userid))
+    u = g.user.unfollow(user)
+    if u is None:
+        flash('Cannot unfollow %s .' % userid)
+        return redirect(url_for('user', userid=userid))
+    db.session.add(u)
+    db.session.commit()
+    flash('You have stopped following %s .' % userid)
+    return redirect(url_for('user', userid=userid))
 
 
 @app.route('/detail')

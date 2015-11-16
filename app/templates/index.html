@@ -1,12 +1,26 @@
 {% extends "base.html" %}
 {% block content %}
-    {% for message in get_flashed_messages() %}
-        <p><b>Error</b>: {{ message }}</p>
-    {% endfor %}
-
     <h2>Hi, {{ user.nickname }}!</h2>
+    <form action="" method="post" name="post">
+        {{ form.hidden_tag() }}
+        <table>
+            <tr>
+                <td>Say something:</td>
+                <td>{{ form.post(size=30, maxlength=140) }}</td>
+                <td>
+                    {% for error in form.post.errors %}
+                        <span style="color: red;">[{{ error }}]</span><br>
+                    {% endfor %}
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td><input type="submit" value="Post!"></td>
+                <td></td>
+            </tr>
+        </table>
+    </form>
     {% for post in posts %}
-        <div><p>{{ post.author.nickname }} says: <b>{{ post.body }}</b></p></div>
+        {% include 'post.html' %}
     {% endfor %}
-
 {% endblock %}

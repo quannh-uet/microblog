@@ -1,11 +1,11 @@
-from app.forms import EditForm, PostForm
+from app.forms import EditForm, PostForm, SearchForm
 from flask import render_template, flash, redirect, url_for, request, g
 from flask.ext.login import login_user, logout_user, current_user, login_required
 from app import app, db, lm
 from .models import User, Post
 from oauth import OAuthSignIn
 from datetime import datetime
-from config import POSTS_PER_PAGE
+from config import POSTS_PER_PAGE, MAX_SEARCH_RESULTS
 
 
 @app.before_request
@@ -15,6 +15,7 @@ def before_request():
         g.user.last_seen = datetime.utcnow()
         db.session.add(g.user)
         db.session.commit()
+        g.search_form = SearchForm()
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -30,7 +31,7 @@ def index(page=1):
         flash('Your post is now live!')
         return redirect(url_for('index'))
     user = g.user
-    posts = g.user.followed_posts().paginate(page, POSTS_PER_PAGE, False).items
+    posts = g.user.followed_posts().paginate(page, POSTS_PER_PAGE, False)
     return render_template('index.html', title='Home', form=form, user=user, posts=posts)
 
 
@@ -42,7 +43,7 @@ def user(userid, page=1):
     if user is None:
         flash('User %s not found.' % userid)
         return redirect(url_for('index'))
-    posts = user.posts.paginate(page, POSTS_PER_PAGE, False).items
+    posts = user.posts.paginate(page, POSTS_PER_PAGE, False)
     return render_template('user.html',
                            user=user,
                            posts=posts)
@@ -93,6 +94,23 @@ def unfollow(userid):
     db.session.commit()
     flash('You have stopped following %s .' % userid)
     return redirect(url_for('user', userid=userid))
+
+
+@app.route('/search', methods=['POST'])
+@login_required
+def search():
+    if not g.search_form.validate_on_submit():
+        return redirect(url_for('index'))
+    return redirect(url_for('search_results', query=g.search_form.search.data))
+
+
+@app.route('/search_results/<query>')
+@login_required
+def search_results(query):
+    results = Post.query.whoosh_search(query, MAX_SEARCH_RESULTS).all()
+    return render_template('search_results.html',
+                           query=query,
+                           results=results)
 
 
 @app.route('/detail')

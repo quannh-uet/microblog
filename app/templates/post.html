@@ -2,8 +2,5 @@
     <tr valign="top">
         <td><img src="{{ post.author.avatar_url }}"></td>
         <td><i>{{ post.author.nickname }} says:</i><br>{{ post.body }}</td>
-        {% if posts.has_prev %}<a href="{{ url_for('index', page=posts.prev_num) }}">&lt;&lt; Newer posts</a>
-            |{% endif %}
-        {% if posts.has_next %}<a href="{{ url_for('index', page=posts.next_num) }}">Older posts &gt;&gt;</a>{% endif %}
     </tr>
 </table>

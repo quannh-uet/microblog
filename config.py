@@ -8,6 +8,8 @@ SQLALCHEMY_MIGRATE_REPO = os.path.join(basedir, 'db_repository')
 WTF_CSRF_ENABLED = True
 SECRET_KEY = 'you-will-never-guess'
 
+WHOOSH_BASE = os.path.join(basedir, 'search.db')
+
 OAUTH_CREDENTIALS = {
     'facebook': {
         'credentials': {
@@ -43,3 +45,5 @@ ADMINS = ['you@example.com']
 
 # pagination
 POSTS_PER_PAGE = 20
+# searching
+MAX_SEARCH_RESULTS = 50

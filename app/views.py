@@ -6,7 +6,7 @@ from .models import User, Post
 from oauth import OAuthSignIn
 from datetime import datetime
 from config import POSTS_PER_PAGE, MAX_SEARCH_RESULTS
-
+from .emails import follower_notification
 
 @app.before_request
 def before_request():
@@ -72,6 +72,7 @@ def follow(userid):
     db.session.add(u)
     db.session.commit()
     flash('You are now following %s !' % userid)
+    follower_notification(user, g.user)
     return redirect(url_for('user', userid=userid))
 
 
